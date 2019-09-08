@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>todoList</title>
+    <script src="https://cdn.bootcss.com/vue/2.6.10/vue.min.js"></script>
+</head>
+<body>
+    <div id='app'>
+        <div class="input">
+            <input v-model="content">
+            <button class="add" @click='add'>添加</button>
+        </div>
+        <div class="list">
+            <div class="title">
+                <span>任务列表</span>
+                <div class="btn">
+                    <button class='all' :class="{active: status==1}" @click='all(1)'>全部</button>
+                    <button class="done" :class="{active: status==2}" @click='success(2)'>已完成</button>
+                    <button class="undone" :class="{active: status==3}" @click='fail(3)'>未完成</button> 
+                </div>               
+            </div>
+            <div class="content">
+                <All :list='arr':all='isAll' @onchange='turn' @del-list='reduce' @select='choose' v-if='status==1'></All>
+                <Done :list='done':all='isAll' @onchange='turn' @del-list='reduce' @select='choose' v-if='status==2'></Done>
+                <Undone :list='undone':all='isAll' @onchange='turn' @del-list='reduce' @select='choose' v-if='status==3'></Undone>
+            </div>
+            <div class="bottom">
+                <input type='checkbox' @click='chooseAll' :checked='none'>
+                <button class="del" @click='del'>删除所选</button>
+            </div>
+        </div>
+        <p class="total">共{{ total }}项任务，已完成{{ doneNum }}项任务，未完成{{ undoneNum }}项任务</p>
+    </div>
+</body>
+<script>
+    Vue.component('All',{
+        props:['list','all'],
+        template:`
+            <ul>
+                <li class='item' v-for='(item,index) in list' :key='index'>
+                    <input type='checkbox' :checked='item.choose' @click='$emit("select",item.time)'>
+                    <slot>{{item.content}}</slot>
+                    <button class='singleDel' @click='$emit("del-list",item.time)'>删除</button>
+                    <button :class="[item.flag?'not':'yes']" @click='change(index,item.time)'>{{item.flag?'标记完成':'标记未完成'}}</button>
+                </li>
+            </ul>
+        `,
+        methods:{
+            change(index){
+                this.$emit('onchange',index)
+            },
+        },
+    })
+    Vue.component('Done',{
+        props:['list','all'],
+        template:`
+            <ul>
+                <li class='item' v-for='(item,index) in list' :key='index'>
+                    <input type='checkbox' :checked='item.choose' @click='$emit("select",item.time)'>
+                    <slot>{{item.content}}</slot>
+                    <button class='singleDel' @click='$emit("del-list",item.time)'>删除</button>
+                    <button :class="[item.flag?'not':'yes']" @click='change(index)'>{{item.flag?'标记完成':'标记未完成'}}</button>
+                </li>
+            </ul>
+        `,
+        methods:{
+            change(index){
+                this.$emit('onchange',index)
+            },
+        },
+    })
+    Vue.component('Undone',{
+        props:['list','all'],
+        template:`
+            <ul>
+                <li class='item' v-for='(item,index) in list' :key='index'>
+                    <input type='checkbox' :checked='item.choose' @click='$emit("select",item.time)'>
+                    <slot>{{item.content}}</slot>
+                    <button class='singleDel' @click='$emit("del-list",item.time)'>删除</button>
+                    <button :class="[item.flag?'not':'yes']" @click='change(index)'>{{item.flag?'标记完成':'标记未完成'}}</button>
+                </li>
+            </ul>
+        `,
+        methods:{
+            change(index){
+                this.$emit('onchange',index)
+            },
+        },
+    })
+    var xx = new Vue({
+        el:'#app',
+        data:{
+            num:1,        
+            status:1,         //tab标志
+            content:'',
+            isAll:false,      //行内选中全部标志
+            none:false,       //选中全部按钮状态
+            arr:[],
+            done:[],
+            undone:[],
+            obj:{},
+        },
+        methods:{
+            //添加列表
+            add(){
+                if(this.status!==1){
+                    this.status=1
+                }
+                if(this.isAll){
+                    obj={content:this.content,flag:false,choose:true,time:(new Date()).valueOf()}  //添加对象属性
+                    this.arr.push(obj);
+                    this.undone.push(obj)
+                }else{
+                    obj={content:this.content,flag:false,choose:false,time:(new Date()).valueOf()}
+                    this.arr.push(obj);
+                    this.undone.push(obj)
+                }
+            },
+            //改变完成状态
+            turn(index){
+                this.arr[index].flag = !this.arr[index].flag;
+                // this.undone =this.arr.filter(item=>item.flag==false)  
+                // this.done = this.arr.filter(item=>item.flag==true)      
+                if(this.status==2){
+                    this.done = this.arr.filter(item=>item.flag==true)
+                }
+                if(this.status==3){
+                    this.undone = this.arr.filter(item=>item.flag==false)
+                }        
+            },
+            //行内删除
+            reduce(time){ 
+                this.arr = this.arr.filter(item=>item.time!==time)
+                if(this.status==3){
+                    this.undone = this.undone.filter(item=>item.time!==time)
+                } else if(this.status ==2){
+                    this.done = this.done.filter(item=>item.time!==time)
+                }         
+            },
+            //选中全部
+            chooseAll(){
+                this.none = !this.none
+                if(this.none){
+                    this.isAll = true
+                }else {
+                    this.isAll = false
+                }             
+                this.arr.map(item=>item.choose=this.isAll)
+            },
+            //行内选中
+            choose(index){
+                var flag=[]; 
+                this.arr.map(item=>{                   
+                    if(item.time == index){
+                        item.choose =!item.choose
+                    }                    
+                })
+                this.arr.map(item=>{
+                    flag.push(item.choose)
+                })
+                if(flag.indexOf(true)< 0){
+                    this.none = false
+                }
+            },
+            //批量删除
+            del(){
+                this.arr = this.arr.filter(item=>
+                    item.choose == false
+                )                 
+                if(this.status==3){
+                    this.undone = this.arr.filter(item=>item.flag==false)
+                } 
+                if(this.status ==2){
+                    this.done = this.arr.filter(item=>item.flag==true)
+                }                               
+                var newArr = this.arr.filter(item=>item.choose==true)
+                if(newArr!=[]){
+                    this.none=false
+                    this.isAll=false
+                }               
+            },
+            //展示全部列表
+            all(n){
+                this.status=1
+            },
+            //展示已完成列表
+            success(n){
+                this.status=2
+                this.done= this.arr.filter(item=>item.flag==true)
+            },
+            //展示未完成列表
+            fail(n){
+                this.status=3
+                this.undone = this.arr.filter(item=>item.flag==false)
+            }
+        },
+        computed:{
+            //总任务数量
+            total:function(){
+                return this.arr.length
+            },
+            //已完成数量
+            doneNum: function(){
+                var count=0;
+                this.arr.map(item=>{
+                    if(item.flag){
+                        count++
+                    }
+                })
+                return count
+            },
+            //未完成数量
+            undoneNum:function(){
+                return this.total-this.doneNum
+            }
+        }
+    })
+</script>
+<style>
+    *{
+        margin: 0;
+        padding: 0;
+    }
+    #app{
+        position: relative;
+        width: 600px;
+        left: 50%;
+        transform: translate(-50%,0);
+    }
+    .input{
+        margin:10px 0; 
+    }
+    .add{
+        width: 60px;
+        height: 25px;
+        background: rgb(39, 109, 240);
+        border-radius: 5px;
+        float: right;
+    }
+    .list {
+        border: 1px solid rgb(219, 218, 218);
+        border-radius: 5px;
+    }
+    .title{
+        display: flex;
+        background: rgb(231, 229, 229);
+        height: 35px;
+        line-height: 35px; 
+        padding: 0 10px;    
+    }
+    .title span {
+        width: 100%;
+    }
+    .btn {
+        width: 100%;
+        display: flex;
+        justify-content: flex-end;
+    }
+    .title button {
+        position: relative;
+        top: 50%;
+        margin-top: -12px;
+        justify-content:right;
+        width: 60px;
+        height: 24px;
+        border: 1px solid rgb(219, 218, 218);
+    }
+    .all, .done, .undone {
+        background: #fff;
+    }
+    .active {
+        background: rgb(39, 109, 240);
+    }
+    .content {
+        min-height: 120px;
+    }
+    .bottom {
+        height: 35px;
+        line-height: 35px;
+        padding: 0 10px;
+        background: rgb(231, 229, 229);
+    }
+    .del{
+        position: relative;
+        top: 50%;
+        margin-top: -12px;
+        float: right;
+        width: 80px;
+        height: 24px;
+        border: 1px solid rgb(219, 218, 218);
+        background: rgb(250, 47, 64);
+    }
+    .total {
+        margin-top: 5px;
+        font-size: 12px;
+        color: rgb(99, 98, 98)
+    }
+    .item {
+        position: relative;
+        padding: 0 10px;
+        height: 30px;
+        line-height: 30px;
+        list-style: none;
+        border-bottom:1px solid rgb(219, 218, 218);
+    }
+    .singleDel {
+        float: right;
+        margin-top: 5px;
+        width: 40px;
+        height: 20px;
+        border: 0px;
+        background: rgb(250, 47, 64);
+    }
+    .yes {
+        float: right;
+        margin-top: 5px;
+        width: 75px;
+        height: 20px;
+        border: 0px;
+        background: rgb(247, 175, 42);
+    }
+    .not {
+        float: right;
+        margin-top: 5px;
+        width: 70px;
+        height: 20px;
+        border: 0px;
+        background: rgb(16, 231, 52);
+    }
+</style>
+</html>
